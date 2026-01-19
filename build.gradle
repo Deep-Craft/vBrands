@@ -1,0 +1,62 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+}
+
+group = 'com.vitor'
+version = '1.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'velocity'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+
+    compileOnly files('libs/velocity-proxy-3.3.0-SNAPSHOT.jar')
+
+    compileOnly 'io.netty:netty-buffer:4.1.109.Final'
+    compileOnly 'io.netty:netty-common:4.1.109.Final'
+    compileOnly 'io.netty:netty-transport:4.1.109.Final'
+    compileOnly 'io.netty:netty-codec:4.1.109.Final'
+    compileOnly 'io.netty:netty-handler:4.1.109.Final'
+}
+
+def targetJavaVersion = 17
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+def templateSource = file('src/main/templates')
+def templateDest = layout.buildDirectory.dir('generated/sources/templates')
+def generateTemplates = tasks.register('generateTemplates', Copy) { task ->
+    def props = [
+            'version': project.version
+    ]
+    task.inputs.properties props
+
+    task.from templateSource
+    task.into templateDest
+    task.expand props
+}
+
+sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
